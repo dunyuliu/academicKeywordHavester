@@ -33,15 +33,19 @@ def filtering(pub_bib, keyword, pub_exclude_list):
         pub_year = False
         print('Invalid or missing publication year:', pub_bib['year'])
 
-    # Exclude publications from AGU Fall Meeting Abstracts
+    # Exclude publications from block list
     if pub_bib['venue'] in pub_exclude_list:
         pub_venue = False
-        print('Excluding venue', pub_bib['venue'])
-        return False
+        print('Venue in excluded list', pub_bib['venue'], ' exlcuding publication.')
+    #elif pub_bib['venue'] == 'NA':
+    #    pub_venue = False
+    #    print('Venue is NA, excluding publication.')
     
     if keyword_found and pub_year and pub_venue:
         meets_criteria = True
         print('Publication meets the criteria.')
+    else:
+        print('Publication does not meet the criteria.')
     return meets_criteria 
 
 def create_excel_with_headers(filename):
@@ -62,27 +66,23 @@ def is_author_in_pub_bib(full_name, pub_bib):
     
     # Get the list of authors from pub_bib
     authors = pub_bib.get('authors', '').lower()
-    
-    # Check for exact match
-    if full_name.lower() in authors:
-        return True
-    
-    # Check for partial matches (first name, last name, initials, etc.)
-    for part in name_parts:
-        if part in authors:
+    # Generate variations of the author's name
+    name_variations = [full_name]
+    name_parts = full_name.split()
+    if len(name_parts) == 2:
+        initials = name_parts[0][0] + '. ' + name_parts[1]
+        initials_no_dot = name_parts[0][0] + ' ' + name_parts[1]
+        name_variations.extend([initials, initials_no_dot])
+        print('Author full name is the keyword; name variations include', name_variations)
+    # Check if any variation of the author's name exists in pub_bib['authors']
+    for variation in name_variations:
+        if variation.lower() in authors:
             return True
-    
-    # Check for initials (e.g., Y. Shen for Yishan Shen)
-    initials = ''.join([name[0] for name in name_parts])
-    if initials in authors:
-        return True
     
     return False
 
 def is_duplicate_entry(new_entry, reference_df):
     """Check if the new entry is a duplicate based on year, authors, title, and venue."""
-    #print("Checking for duplicates with the following entry:")
-    #print(f"Year: {new_entry['year']}, Authors: {new_entry['authors']}, Title: {new_entry['title']}, Venue: {new_entry['venue']}")
     # Ensure the comparison is case-insensitive and data types match
     duplicate = reference_df[
         (reference_df['Year'].astype(str) == str(new_entry['year'])) &
@@ -112,7 +112,6 @@ def write_query_to_file(query, keyword, filename, nBatch, pub_exclude_list):
 
 
     nPerBatch = 20
-    #nBatch = 20
     sleepTime = random.uniform(5, 10)
 
     for ib in range(nBatch):
@@ -129,7 +128,6 @@ def write_query_to_file(query, keyword, filename, nBatch, pub_exclude_list):
         print('Processing the ',ib,' batch')
         print(' ')
         for pub in query:
-            #print(pub)
             nTmp += 1
             print('Fetching metadata for the ',ib*nPerBatch+nTmp, ' publications ...')
             bib = pub['bib']
@@ -148,14 +146,21 @@ def write_query_to_file(query, keyword, filename, nBatch, pub_exclude_list):
                        'abstract': abstract,
                        'year': year,
                        'venue': publication}
-            print(to_check_duplicates)
-            
 
             if to_check_duplicates:
                 duplicate = is_duplicate_entry(pub_bib, reference_df)
                 if duplicate:
-                    print(f"Duplicate entry found: {pub_bib['title']} ({pub_bib['year']})")
-            elif (not to_check_duplicates) or (to_check_duplicates and not duplicate):
+                    print(' ')
+                else:
+                    meets_criteria = filtering(pub_bib, keyword, pub_exclude_list)
+                    if meets_criteria:
+                        data['Year'].append(year)
+                        data['Authors'].append(authors)
+                        data['Title'].append(title)
+                        data['Abstract'].append(abstract) 
+                        data['Publication'].append(publication)
+                        data['Citations'].append(citations)
+            elif not to_check_duplicates:
                 meets_criteria = filtering(pub_bib, keyword, pub_exclude_list)
                 if meets_criteria:
                     data['Year'].append(year)
@@ -175,8 +180,7 @@ def write_query_to_file(query, keyword, filename, nBatch, pub_exclude_list):
         df = pd.DataFrame(data)
         df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
         df.sort_values(by='Year', ascending=False, inplace=True)
-        #df.to_excel(filename, index=False)
-        print(df)
+
         with pd.ExcelWriter(filename, mode='a', if_sheet_exists='overlay', engine='openpyxl') as writer:
             df.to_excel(writer, index=False, header=True)  # Append without headers
             if os.path.exists(filename):
