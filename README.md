@@ -1,5 +1,5 @@
 # academicKeywordHavester
-Gather stats of references to software/author from Google Scholar 
+Harvest stats of publiations from an author or citing a software from Google Scholar. 
 
 ## Installation
 ```
@@ -16,20 +16,20 @@ pip3 install scholarly matplotlib --break-system-pacakges
 python3 harvestStats.py h # h for help and usage 
 ```
 
-To query Google Scholar and build an excel database for an author or software,
+To query Google Scholar for a keyword, a string for an author or software name, and build an excel database of publications from the author or citing the software, try option 'q':
 ```
-python3 harvestStats.py q 'Yishan Shen' 
+python3 harvestStats.py q 'Yishan Shen' # author full name 'Yishan Shen'
 ```
 
 or 
 ```
-python3 harvestStats.py q EQdyna 3 
+python3 harvestStats.py q EQdyna 3 # software name EQdyna 
 ```
-The last number indicates how many batches of queries to make. A batch contains 20 queries and if not given, the default is 1.
+The last number indicates how many batches of queries to make. A batch contains 20 queries and if not given, the default value is 1.
   
-If a database exists, use 'p' option to plot the article counts and total citations by year. 
+If a database exists, use 'p' option to plot the article counts and total citations by year: 
 ```
-python3 harvestStats.py p GMTSAR 
+python3 harvestStats.py p GMTSAR # plot stats for publications citing GMTSAR 
 ```
 
 ## Note
